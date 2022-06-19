@@ -12,9 +12,9 @@ public class InboxManager implements IInboxManager {
     IInboxDAO InboxDAO = new InboxDAO();
 
     @Override
-    public List<Inbox> LoadInboxListByMessageHeader(String messageHeaderUserContactFormat, String messageHeaderContactUserFormati) throws Exception {
+    public List<Inbox> LoadInboxListByMessageHeader(String messageHeaderUserContactFormat, String messageHeaderContactUserFormat) throws Exception {
         try {
-            return InboxDAO.GetInboxListByMessageHeader(messageHeaderUserContactFormat, messageHeaderContactUserFormati);
+            return InboxDAO.GetInboxListByMessageHeader(messageHeaderUserContactFormat, messageHeaderContactUserFormat);
         }
         catch(Exception exception) {
             throw new Exception(exception.getMessage());
