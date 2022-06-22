@@ -91,7 +91,7 @@ public class LoginFrame extends JFrame implements ActionListener {
                 }
                 frame.setTitle("Server");
                 frame.setVisible(true);
-                frame.setBounds(10, 10, 500, 600);
+                frame.setBounds(10, 10, 600, 650);
                 frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 frame.setResizable(true);
 
