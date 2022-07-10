@@ -8,6 +8,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
 
 public class LoginFrame extends JFrame implements ActionListener {
 
@@ -29,7 +30,6 @@ public class LoginFrame extends JFrame implements ActionListener {
         setLocationAndSize();
         addComponentsToContainer();
         addActionEvent();
-
     }
 
     public void setLayoutManager() {
@@ -44,8 +44,6 @@ public class LoginFrame extends JFrame implements ActionListener {
         showPassword.setBounds(150, 250, 150, 30);
         loginButton.setBounds(50, 300, 100, 30);
         resetButton.setBounds(200, 300, 100, 30);
-
-
     }
 
     public void addComponentsToContainer() {
@@ -83,17 +81,17 @@ public class LoginFrame extends JFrame implements ActionListener {
             }
 
             if (user != null) {
-                ServerFrame frame = null;
+                ClientFrame clientFrame = null;
                 try {
-                    frame = new ServerFrame(user);
+                    clientFrame = new ClientFrame(user);
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);
                 }
-                frame.setTitle("Server");
-                frame.setVisible(true);
-                frame.setBounds(10, 10, 600, 650);
-                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                frame.setResizable(true);
+                clientFrame.setTitle("Client");
+                clientFrame.setVisible(true);
+                clientFrame.setBounds(10, 10, 600, 650);
+                clientFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                clientFrame.setResizable(true);
 
             } else {
                 JOptionPane.showMessageDialog(this, "Invalid Username or Password");
@@ -110,8 +108,6 @@ public class LoginFrame extends JFrame implements ActionListener {
             } else {
                 passwordField.setEchoChar('*');
             }
-
-
         }
     }
 

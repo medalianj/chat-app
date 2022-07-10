@@ -1,9 +1,8 @@
 package com.app.main;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import com.models.DTO.MessageDTO;
+
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
@@ -11,41 +10,52 @@ import java.util.Scanner;
 public class Server {
 
     public static void main(String[] args){
-        final ServerSocket serverSocket ;
-        final Socket clientSocket ;
-        final BufferedReader in;
-        final PrintWriter out;
-        final Scanner sc=new Scanner(System.in);
+        final ServerSocket serverSocket;
+        final Socket clientSocket;
+        final ObjectInputStream in;
+        final ObjectOutputStream out;
 
         try {
-            serverSocket = new ServerSocket(5000);
+            serverSocket = new ServerSocket(5300);
+            System.out.println("1");
             clientSocket = serverSocket.accept();
-            out = new PrintWriter(clientSocket.getOutputStream());
-            in = new BufferedReader (new InputStreamReader(clientSocket.getInputStream()));
+            System.out.println("2");
+            out = new ObjectOutputStream(clientSocket.getOutputStream());
+            System.out.println("3");
+            in = new ObjectInputStream(clientSocket.getInputStream());
+            System.out.println("4");
 
             Thread sender= new Thread(new Runnable() {
-                String msg; //variable that will contains the data writter by the user
+                MessageDTO message = new MessageDTO(); //variable that will contains the data writter by the user
                 @Override   // annotation to override the run method
                 public void run() {
                     while(true){
-                        msg = sc.nextLine(); //reads data from user's keybord
-                        out.println(msg);    // write data stored in msg in the clientSocket
-                        out.flush();   // forces the sending of the data
+                        try {
+                            out.writeObject(message);    // write data stored in msg in the clientSocket
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        try {
+                            out.flush();   // forces the sending of the data
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                 }
             });
             sender.start();
 
-            Thread receive= new Thread(new Runnable() {
-                String msg ;
+            Thread receiver= new Thread(new Runnable() {
+                MessageDTO message;
                 @Override
                 public void run() {
                     try {
-                        msg = in.readLine();
+                        message = (MessageDTO) in.readObject();
+//                        System.out.println("Client : "+message.getMessageHeader() + " Text : " + message.getMessageContent());
                         //tant que le client est connecté
-                        while(msg!=null){
-                            System.out.println("Client : "+msg);
-                            msg = in.readLine();
+                        while(message != null){
+                            System.out.println("Client : " + message.getMessageHeader() + " Text : " + message.getMessageContent());
+                            message = (MessageDTO) in.readObject();
                         }
 
                         System.out.println("Client déconecté");
@@ -55,10 +65,12 @@ public class Server {
                         serverSocket.close();
                     } catch (IOException e) {
                         e.printStackTrace();
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
                     }
                 }
             });
-            receive.start();
+            receiver.start();
         } catch (IOException e) {
             e.printStackTrace();
         }
