@@ -2,6 +2,7 @@ package com.ui.forms;
 
 import com.backend.IManagers.IAppuserManager;
 import com.backend.Managers.AppuserManager;
+import com.server.classes.Server;
 import com.tables.entities.Appuser;
 
 import javax.swing.*;
@@ -10,7 +11,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 
-public class LoginFrame extends JFrame implements ActionListener {
+public class LoginFrame extends JFrame implements ActionListener, Runnable {
 
     Container container = getContentPane();
     JLabel userLabel = new JLabel("USERNAME");
@@ -23,9 +24,11 @@ public class LoginFrame extends JFrame implements ActionListener {
 
     //Attributes
     Appuser user = null;
+    Server server = null;
     IAppuserManager AppUserManager = new AppuserManager();
 
-    public LoginFrame() {
+    public LoginFrame(Server server) {
+        this.server = server;
         setLayoutManager();
         setLocationAndSize();
         addComponentsToContainer();
@@ -83,7 +86,7 @@ public class LoginFrame extends JFrame implements ActionListener {
             if (user != null) {
                 ClientFrame clientFrame = null;
                 try {
-                    clientFrame = new ClientFrame(user);
+                    clientFrame = new ClientFrame(user, server);
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);
                 }
@@ -111,4 +114,12 @@ public class LoginFrame extends JFrame implements ActionListener {
         }
     }
 
+    @Override
+    public void run() {
+        this.setTitle("Login Form");
+        this.setVisible(true);
+        this.setBounds(10, 10, 370, 600);
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        this.setResizable(false);
+    }
 }

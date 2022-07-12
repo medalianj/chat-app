@@ -1,9 +1,11 @@
 package com.models.DTO;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 public class MessageDTO implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
     private String messageContent;
     private String messageHeader;

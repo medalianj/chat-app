@@ -5,14 +5,13 @@ import com.backend.IManagers.IInboxManager;
 import com.backend.Managers.ContactManager;
 import com.backend.Managers.InboxManager;
 import com.models.DTO.MessageDTO;
+import com.server.classes.Server;
 import com.tables.entities.Appuser;
 import com.tables.entities.Contact;
 import com.tables.entities.Inbox;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.*;
@@ -20,7 +19,6 @@ import java.net.Socket;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 public class ClientFrame extends javax.swing.JFrame {
 
@@ -45,54 +43,42 @@ public class ClientFrame extends javax.swing.JFrame {
     IContactManager ContactManager = new ContactManager();
     IInboxManager InboxManager = new InboxManager();
 
+    Server server = null;
     Socket clientSocket = null; // socket used by client to send and receive data from server
     ObjectInputStream in = null;   // object to read data from socket
     ObjectOutputStream out = null;     // object to write data into socket
 
-    public ClientFrame(Appuser appUser) throws Exception {
+    public ClientFrame(Appuser appUser, Server server) throws Exception {
         this.user = appUser;
-        this.contacts = loadContacts(this.user) != null ? loadContacts(this.user) : new ArrayList<Contact>();
+        this.server = server;
+        this.contacts = loadContacts(this.user) != null ? loadContacts(this.user) : new ArrayList<>();
         setUser();
         setContacts();
         setLayoutManager();
         setLocationAndSize();
         addComponentsToContainer();
         addActions();
-        Thread clientConnection = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    establishClientConnectionToServer();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        clientConnection.start();
-
+        setUpServer(server);
+        establishClientConnectionToServer();
         instantClientMessagingReceiver();
     }
 
     private void addActions() {
         var serverFrame = this;
-        sendBtn.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if(e.getSource().equals(sendBtn)) {
-                    var messageText = messageTextField.getText();
-                    if(messageText != null && !messageText.equals("")) {
-                        try {
-                            //sendMessage(messageText);
-                            instantClientMessagingSender(messageText);
-                            dmMessages.addElement("Sent : " + messageText);
-                            messageTextField.setText("");
-                        } catch (Exception ex) {
-                            throw new RuntimeException(ex);
-                        }
+        sendBtn.addActionListener(e -> {
+            if (e.getSource().equals(sendBtn)) {
+                var messageText = messageTextField.getText();
+                if (messageText != null && !messageText.equals("")) {
+                    try {
+                        //sendMessage(messageText);
+                        instantClientMessagingSender(messageText);
+                        dmMessages.addElement("Sent : " + messageText);
+                        messageTextField.setText("");
+                    } catch (Exception ex) {
+                        throw new RuntimeException(ex);
                     }
-                    else {
-                        JOptionPane.showMessageDialog(serverFrame, "The message cannot be empty");
-                    }
+                } else {
+                    JOptionPane.showMessageDialog(serverFrame, "The message cannot be empty");
                 }
             }
         });
@@ -119,7 +105,7 @@ public class ClientFrame extends javax.swing.JFrame {
 
     private void setContacts() {
         contactList.setModel(dmContacts);
-        for(Contact c : contacts) {
+        for (Contact c : contacts) {
             dmContacts.addElement(c.getUsername());
         }
         scrollPane = new JScrollPane(contactList);
@@ -130,7 +116,7 @@ public class ClientFrame extends javax.swing.JFrame {
             public void mouseClicked(MouseEvent e) {
                 messageTextField.setText("");
                 var selectedIndex = contactList.getSelectedIndex();
-                if(selectedIndex >= 0) {
+                if (selectedIndex >= 0) {
                     selectedContact = contacts.get(selectedIndex);
                     labelMessagesList.setText("Conversation with " + selectedContact.getFirstName() + " " + selectedContact.getFamilyName());
                     sendBtn.setEnabled(true);
@@ -176,13 +162,12 @@ public class ClientFrame extends javax.swing.JFrame {
         //messagesList = new JList(messages.stream().map(message -> message.getMessageBody()).collect(Collectors.toList()).toArray());
         dmMessages = new DefaultListModel();
         messagesList.setModel(dmMessages);
-        for(Inbox message : messages) {
+        for (Inbox message : messages) {
             var UCValue = user.getUsername() + "TO" + selectedContact.getUsername();
 
-            if(message.getMessageHeader().equals(UCValue)) {
+            if (message.getMessageHeader().equals(UCValue)) {
                 dmMessages.addElement("Sent : " + message.getMessageBody());
-            }
-            else {
+            } else {
                 dmMessages.addElement("Received : " + message.getMessageBody());
             }
         }
@@ -200,15 +185,15 @@ public class ClientFrame extends javax.swing.JFrame {
         container.add(sendBtn);
     }
 
-    private java.util.List<Contact> loadContacts(Appuser user) throws Exception {
-        java.util.List contacts = null;
-        if(user != null && user.getId() != null) {
+    private List<Contact> loadContacts(Appuser user) throws Exception {
+        List<Contact> contacts = null;
+        if (user != null && user.getId() != null) {
             contacts = ContactManager.LoadContactListByIdUser(user.getId());
         }
         return contacts;
     }
 
-    private java.util.List<Inbox> loadMessages(String headerUC, String headerCU) throws Exception {
+    private List<Inbox> loadMessages(String headerUC, String headerCU) throws Exception {
         List<Inbox> messages = null;
 
         messages = InboxManager.LoadInboxListByMessageHeader(headerUC, headerCU);
@@ -231,9 +216,10 @@ public class ClientFrame extends javax.swing.JFrame {
 
     private void instantClientMessagingSender(String messageText) {
         Thread sender = new Thread(new Runnable() {
-            String msgText = messageText;
-            String msgHeader = user.getUsername() + "TO" + selectedContact.getUsername();
-            MessageDTO message = new MessageDTO(msgText, msgHeader);
+            final String msgText = messageText;
+            final String msgHeader = user.getUsername() + "TO" + selectedContact.getUsername();
+            final MessageDTO message = new MessageDTO(msgText, msgHeader);
+
             @Override
             public void run() {
 //                while(true){
@@ -264,18 +250,21 @@ public class ClientFrame extends javax.swing.JFrame {
         sender.start();
     }
 
-    private void instantClientMessagingReceiver() {
+    private void instantClientMessagingReceiver() throws InterruptedException {
 
         Thread receiver = new Thread(new Runnable() {
             MessageDTO message;
+
             @Override
             public void run() {
                 try {
+                    System.out.println("Receiving - receiver");
                     message = (MessageDTO) in.readObject();
-                    while(message != null && message.getMessageHeader().equals(selectedContact.getUsername() + "TO" + user.getUsername())){
-                        System.out.println("Server : "+ message.getMessageHeader() + " " + message.getMessageContent());
+                    System.out.println("fu - receiver");
+                    while (message != null && message.getMessageHeader().equals(selectedContact.getUsername() + "TO" + user.getUsername())) {
+                        System.out.println("From Server : " + message.getMessageHeader() + " " + message.getMessageContent());
                         message = (MessageDTO) in.readObject();
-                        if(message.getMessageHeader() != null && message.getMessageContent() != null){
+                        if (message.getMessageHeader() != null && message.getMessageContent() != null) {
                             dmMessages.addElement("Received : " + message.getMessageContent());
                         }
                     }
@@ -289,13 +278,32 @@ public class ClientFrame extends javax.swing.JFrame {
                 }
             }
         });
+        Thread.sleep(4000);
         receiver.start();
     }
 
-    private void establishClientConnectionToServer() throws IOException {
-        clientSocket = new Socket("127.0.0.1",5300);
-        out = new ObjectOutputStream(clientSocket.getOutputStream());
-        in = new ObjectInputStream(clientSocket.getInputStream());
+    private void establishClientConnectionToServer() throws InterruptedException {
+        Thread clientConnection = new Thread(() -> {
+            try {
+                System.out.println("Xxxxxxxxx - clientConnection");
+                clientSocket = new Socket("127.0.0.1", 5300);
+                System.out.println("Yyyyyyyyyy - clientConnection");
+                out = new ObjectOutputStream(clientSocket.getOutputStream());
+                System.out.println("Zzzzzzzzzzz - clientConnection");
+                in = new ObjectInputStream(clientSocket.getInputStream());
+                System.out.println("Connecting looooollll - clientConnection");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        clientConnection.sleep(2000);
+        clientConnection.start();
+    }
+
+
+    private void setUpServer(Server server) {
+        Thread serverThread = new Thread(server);
+        serverThread.start();
     }
 
 }
